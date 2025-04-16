@@ -12,7 +12,6 @@ var maxItems = segmentSize * 2 / itemSize;
 var mappedFileQueue = MappedFileQueue.Create<TestStruct>(new MappedFileQueueOptions
 {
     StorePath = "test",
-    // 1GB
     SegmentSize = segmentSize
 });
 

@@ -33,7 +33,7 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T> where T : struct
 
         _offsetAccessor = _offsetFile.CreateViewAccessor(0, 4, MemoryMappedFileAccess.ReadWrite);
         _offsetAccessor.Read(0, out _offset);
-        
+
         _itemSize = Marshal.SizeOf<T>();
 
         _segmentDirectory = Path.Combine(options.StorePath, Constants.CommitLogDirectory);
