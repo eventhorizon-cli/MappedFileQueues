@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B4E6A5F8-6E9B-467B-B8AF-15E6C596E5B2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventHorizon.MappedFileQueues", "src\EventHorizon.MappedFileQueues\EventHorizon.MappedFileQueues.csproj", "{618C1A25-0575-401E-B80B-67B6DB47A15B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{B989F32C-D149-494F-B72A-6CE3E90FF461}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleApp", "samples\ConsoleApp\ConsoleApp.csproj", "{1CCE37B4-303A-44E6-A9FD-FCA98E2ABF08}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{618C1A25-0575-401E-B80B-67B6DB47A15B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{618C1A25-0575-401E-B80B-67B6DB47A15B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{618C1A25-0575-401E-B80B-67B6DB47A15B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{618C1A25-0575-401E-B80B-67B6DB47A15B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1CCE37B4-303A-44E6-A9FD-FCA98E2ABF08}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1CCE37B4-303A-44E6-A9FD-FCA98E2ABF08}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1CCE37B4-303A-44E6-A9FD-FCA98E2ABF08}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1CCE37B4-303A-44E6-A9FD-FCA98E2ABF08}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{618C1A25-0575-401E-B80B-67B6DB47A15B} = {B4E6A5F8-6E9B-467B-B8AF-15E6C596E5B2}
+		{1CCE37B4-303A-44E6-A9FD-FCA98E2ABF08} = {B989F32C-D149-494F-B72A-6CE3E90FF461}
+	EndGlobalSection
+EndGlobal
