@@ -1,21 +1,20 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
-using EventHorizon.MappedFileQueues;
 
-namespace MemoryMappedFileQueue;
+namespace EventHorizon.MappedFileQueues;
 
 internal sealed class MappedFileSegment<T> : IDisposable where T : struct
 {
+    private readonly FileStream _fileStream;
     private readonly MemoryMappedFile _mmf;
     private readonly MemoryMappedViewAccessor _viewAccessor;
 
-    public MappedFileSegment(
+    private MappedFileSegment(
         string filePath,
         int fileSize,
         long fileStartOffset,
-        FileMode fileMode,
-        MemoryMappedFileAccess access)
+        bool readOnly)
     {
         if (fileSize <= 0)
         {
@@ -35,12 +34,19 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
         AllowedItemCount = fileSize / (itemSize + 1);
         AllowedEndOffset = fileStartOffset + (AllowedItemCount - 1) * (itemSize + 1);
 
-        _mmf = MemoryMappedFile.CreateFromFile(
+        _fileStream = new FileStream(
             filePath,
-            fileMode,
+            readOnly ? FileMode.Open : FileMode.OpenOrCreate,
+            FileAccess.ReadWrite,
+            FileShare.ReadWrite);
+
+        _mmf = MemoryMappedFile.CreateFromFile(
+            _fileStream,
             null,
             fileSize,
-            access);
+            MemoryMappedFileAccess.ReadWrite,
+            HandleInheritability.None,
+            true);
 
         _viewAccessor = _mmf.CreateViewAccessor(0, fileSize);
     }
@@ -108,6 +114,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
     {
         _viewAccessor.Dispose();
         _mmf.Dispose();
+        _fileStream.Dispose();
     }
 
     /// <summary>
@@ -144,21 +151,13 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
             {
                 Directory.CreateDirectory(directory);
             }
-
-            if (!File.Exists(filePath))
-            {
-                using var stream = new FileStream(
-                    filePath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.ReadWrite);
-                stream.SetLength(fileSize);
-            }
         }
 
         segment = new MappedFileSegment<T>(
             filePath,
             fileSize,
             offset,
-            FileMode.Open,
-            MemoryMappedFileAccess.ReadWrite);
+            readOnly);
 
         return true;
     }
