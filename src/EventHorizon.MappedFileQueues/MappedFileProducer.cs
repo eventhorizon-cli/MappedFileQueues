@@ -1,6 +1,5 @@
 using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
-using MemoryMappedFileQueue;
 
 namespace EventHorizon.MappedFileQueues;
 
