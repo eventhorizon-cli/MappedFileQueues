@@ -59,7 +59,7 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
         var startTicks = DateTime.UtcNow.Ticks;
         while (!_segment.TryRead(_offset, out item))
         {
-            if ((DateTime.UtcNow.Ticks - startTicks) / TimeSpan.NanosecondsPerTick > spinWaitTimeoutMs)
+            if ((DateTime.UtcNow.Ticks - startTicks) / TimeSpan.TicksPerMillisecond > spinWaitTimeoutMs)
             {
                 // Spin wait until the item is available or timeout
                 Thread.Sleep(retryIntervalMs);
