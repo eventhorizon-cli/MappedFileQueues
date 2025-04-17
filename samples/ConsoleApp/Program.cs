@@ -4,6 +4,13 @@ using System.Runtime.InteropServices;
 using ConsoleApp;
 using EventHorizon.MappedFileQueues;
 
+// Clean up the test directory
+var testDirectory = "test";
+if (Directory.Exists(testDirectory))
+{
+    Directory.Delete(testDirectory, true);
+}
+
 var segmentSize = 512 * 1024 * 1024;
 
 var itemSize = Marshal.SizeOf<TestStruct>();
