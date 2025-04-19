@@ -8,7 +8,7 @@ public class MappedFileQueueOptions
     public required string StorePath { get; set; }
 
     /// <summary>
-    /// The size of each mapped file segment in bytes.
+    /// The size of each mapped file segment in bytes, may be adjusted to fit the data type.
     /// </summary>
     public required int SegmentSize { get; set; }
 }

@@ -50,7 +50,7 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
             }
         }
 
-        if (_offset > _segment.AllowedEndOffset)
+        if (_offset > _segment.AllowedLastOffsetToWrite)
         {
             _segment.Dispose();
             _segment = null;

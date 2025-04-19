@@ -28,12 +28,16 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
                 "File start offset must be greater than or equal to zero.");
         }
 
-        Size = fileSize;
         StartOffset = fileStartOffset;
+
         // 1 byte for magic byte
         _itemSize = Marshal.SizeOf<T>();
         AllowedItemCount = fileSize / (_itemSize + 1);
-        AllowedEndOffset = fileStartOffset + (AllowedItemCount - 1) * (_itemSize + 1);
+        AllowedLastOffsetToWrite = fileStartOffset + (AllowedItemCount - 1) * (_itemSize + 1);
+        EndOffset = AllowedLastOffsetToWrite + _itemSize;
+
+        var adjustedFileSize = EndOffset - fileStartOffset + 1;
+        Size = adjustedFileSize;
 
         _fileStream = new FileStream(
             filePath,
@@ -44,12 +48,12 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
         _mmf = MemoryMappedFile.CreateFromFile(
             _fileStream,
             null,
-            fileSize,
+            adjustedFileSize,
             MemoryMappedFileAccess.ReadWrite,
             HandleInheritability.None,
             true);
 
-        _viewAccessor = _mmf.CreateViewAccessor(0, fileSize);
+        _viewAccessor = _mmf.CreateViewAccessor(0, adjustedFileSize);
     }
 
     public long Size { get; }
@@ -58,10 +62,12 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
 
     public long StartOffset { get; }
 
+    public long EndOffset { get; }
+
     /// <summary>
     /// The maximum offset that can be used for writing.
     /// </summary>
-    public long AllowedEndOffset { get; }
+    public long AllowedLastOffsetToWrite { get; }
 
     public void Write(long offset, ref T value)
     {
@@ -73,10 +79,10 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
                 $"Offset {offset} must be greater than or equal to the start offset {StartOffset}.");
         }
 
-        if (actualOffset > AllowedEndOffset)
+        if (actualOffset > AllowedLastOffsetToWrite)
         {
             throw new ArgumentOutOfRangeException(nameof(offset),
-                $"Offset {offset} must be less than the allowed end offset {AllowedEndOffset}.");
+                $"Offset {offset} must be less than the allowed end offset {AllowedLastOffsetToWrite}.");
         }
 
         _viewAccessor.Write(actualOffset, ref value);
@@ -93,10 +99,10 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
                 $"Offset {offset} must be greater than or equal to the start offset {StartOffset}.");
         }
 
-        if (actualOffset > AllowedEndOffset)
+        if (actualOffset > AllowedLastOffsetToWrite)
         {
             throw new ArgumentOutOfRangeException(nameof(offset),
-                $"Offset {offset} must be less than the allowed end offset {AllowedEndOffset}.");
+                $"Offset {offset} must be less than the allowed end offset {AllowedLastOffsetToWrite}.");
         }
 
         var magicByte = _viewAccessor.ReadByte(actualOffset + _itemSize);
@@ -122,7 +128,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
     /// Try to creat or find the file segment which contains the offset.
     /// </summary>
     /// <param name="directory">The directory path where the files is stored.</param>
-    /// <param name="fileSize">The size of the file.</param>
+    /// <param name="fileSize">The size of the file, may be adjusted to fit the data type.</param>
     /// <param name="offset">The offset which is stored in the file.</param>
     /// <param name="readOnly">True if the file is opened in read only mode, otherwise false.</param>
     /// <param name="segment">The segment which contains the offset.</param>

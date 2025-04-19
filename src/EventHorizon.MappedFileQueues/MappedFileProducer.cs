@@ -44,7 +44,7 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T> where T : struct
     public void Produce(ref T item)
     {
         // The first segment is initialized in the constructor
-        while (_segment.AllowedEndOffset < _offset)
+        while (_segment.AllowedLastOffsetToWrite < _offset)
         {
             _segment.Dispose();
             // Not enough space in the current segment, create a new one
