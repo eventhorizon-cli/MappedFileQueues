@@ -44,8 +44,10 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
         int spinWaitTimeoutMs = 100;
         while (_segment == null)
         {
-            TryFindSegmentByOffset();
-            Thread.Sleep(retryIntervalMs);
+            if (!TryFindSegmentByOffset())
+            {
+                Thread.Sleep(retryIntervalMs);
+            }
         }
 
         if (_offset > _segment.AllowedEndOffset)
@@ -79,7 +81,7 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
         _segment?.Dispose();
     }
 
-    private void TryFindSegmentByOffset() =>
+    private bool TryFindSegmentByOffset() =>
         MappedFileSegment<T>.TryCreateOrFindByOffset(
             _segmentDirectory,
             _options.SegmentSize,

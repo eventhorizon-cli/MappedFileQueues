@@ -9,6 +9,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
     private readonly FileStream _fileStream;
     private readonly MemoryMappedFile _mmf;
     private readonly MemoryMappedViewAccessor _viewAccessor;
+    private readonly int _itemSize;
 
     private MappedFileSegment(
         string filePath,
@@ -30,9 +31,9 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
         Size = fileSize;
         StartOffset = fileStartOffset;
         // 1 byte for magic byte
-        var itemSize = Marshal.SizeOf<T>();
-        AllowedItemCount = fileSize / (itemSize + 1);
-        AllowedEndOffset = fileStartOffset + (AllowedItemCount - 1) * (itemSize + 1);
+        _itemSize = Marshal.SizeOf<T>();
+        AllowedItemCount = fileSize / (_itemSize + 1);
+        AllowedEndOffset = fileStartOffset + (AllowedItemCount - 1) * (_itemSize + 1);
 
         _fileStream = new FileStream(
             filePath,
@@ -78,8 +79,8 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
                 $"Offset {offset} must be less than the allowed end offset {AllowedEndOffset}.");
         }
 
-        _viewAccessor.Write(actualOffset, Constants.MagicByte);
-        _viewAccessor.Write(actualOffset + 1, ref value);
+        _viewAccessor.Write(actualOffset, ref value);
+        _viewAccessor.Write(actualOffset + _itemSize, Constants.MagicByte);
     }
 
     public bool TryRead(long offset, out T value)
@@ -98,7 +99,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
                 $"Offset {offset} must be less than the allowed end offset {AllowedEndOffset}.");
         }
 
-        var magicByte = _viewAccessor.ReadByte(actualOffset);
+        var magicByte = _viewAccessor.ReadByte(actualOffset + _itemSize);
 
         if (magicByte != Constants.MagicByte)
         {
@@ -106,7 +107,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
             return false;
         }
 
-        _viewAccessor.Read(actualOffset + 1, out value);
+        _viewAccessor.Read(actualOffset, out value);
         return true;
     }
 
