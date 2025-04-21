@@ -57,7 +57,10 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
             Consume(out item);
         }
 
+
+        var spinWait = new SpinWait();
         var startTicks = DateTime.UtcNow.Ticks;
+
         while (!_segment.TryRead(_offset, out item))
         {
             if ((DateTime.UtcNow.Ticks - startTicks) / TimeSpan.TicksPerMillisecond > spinWaitTimeoutMs)
@@ -65,6 +68,9 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
                 // Spin wait until the item is available or timeout
                 Thread.Sleep(retryIntervalMs);
             }
+
+            // Use SpinWait to avoid busy waiting
+            spinWait.SpinOnce();
         }
     }
 
