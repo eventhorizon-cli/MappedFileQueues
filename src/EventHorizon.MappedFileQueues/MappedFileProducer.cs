@@ -8,9 +8,8 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T> where T : struct
     private readonly MappedFileQueueOptions _options;
 
     // Memory mapped file to store the producer offset
-    private int _offset;
-    private readonly MemoryMappedFile _offsetFile;
-    private readonly MemoryMappedViewAccessor _offsetAccessor;
+    private readonly OffsetMappedFile _offsetFile;
+
     private readonly int _itemSize;
 
     private readonly string _segmentDirectory;
@@ -27,31 +26,30 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T> where T : struct
         }
 
         var offsetPath = Path.Combine(offsetDir, Constants.ProducerOffsetFile);
-        _offsetFile = MemoryMappedFile.CreateFromFile(offsetPath, FileMode.OpenOrCreate, null, 4,
-            MemoryMappedFileAccess.ReadWrite);
-
-        _offsetAccessor = _offsetFile.CreateViewAccessor(0, 4, MemoryMappedFileAccess.ReadWrite);
-        _offsetAccessor.Read(0, out _offset);
+        _offsetFile = new OffsetMappedFile(offsetPath);
 
         _itemSize = Marshal.SizeOf<T>();
 
         _segmentDirectory = Path.Combine(options.StorePath, Constants.CommitLogDirectory);
-
-        // Initialize the first segment
-        OpenOrCreateSegmentByOffset();
     }
 
     public void Produce(ref T item)
     {
-        // The first segment is initialized in the constructor
-        while (_segment.AllowedLastOffsetToWrite < _offset)
+        if (_segment == null)
         {
-            _segment.Dispose();
-            // Not enough space in the current segment, create a new one
+            // Initialize the first segment
             OpenOrCreateSegmentByOffset();
         }
 
-        _segment.Write(_offset, ref item);
+        // The first segment is initialized in the constructor
+        while (_segment.AllowedLastOffsetToWrite < _offsetFile.Offset)
+        {
+            // Not enough space in the current segment, create a new one
+            _segment.Dispose();
+            OpenOrCreateSegmentByOffset();
+        }
+
+        _segment.Write(_offsetFile.Offset, ref item);
 
         Commit();
     }
@@ -59,14 +57,12 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T> where T : struct
     public void Dispose()
     {
         _offsetFile.Dispose();
-        _offsetAccessor.Dispose();
         _segment?.Dispose();
     }
 
     private void Commit()
     {
-        _offset = _offset + _itemSize + 1;
-        _offsetAccessor.Write(0, _offset);
+        _offsetFile.Advance(_itemSize + 1);
     }
 
     private void OpenOrCreateSegmentByOffset()
@@ -74,7 +70,7 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T> where T : struct
         MappedFileSegment<T>.TryCreateOrFindByOffset(
             _segmentDirectory,
             _options.SegmentSize,
-            _offset,
+            _offsetFile.Offset,
             false,
             out _segment);
     }

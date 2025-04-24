@@ -1,4 +1,3 @@
-using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 
 namespace EventHorizon.MappedFileQueues;
@@ -8,9 +7,8 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
     private readonly MappedFileQueueOptions _options;
 
     // Memory mapped file to store the consumer offset
-    private int _offset;
-    private readonly MemoryMappedFile _offsetFile;
-    private readonly MemoryMappedViewAccessor _offsetAccessor;
+    private readonly OffsetMappedFile _offsetFile;
+
     private readonly int _itemSize;
 
     private readonly string _segmentDirectory;
@@ -27,11 +25,7 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
         }
 
         var offsetPath = Path.Combine(offsetDir, Constants.ConsumerOffsetFile);
-        _offsetFile = MemoryMappedFile.CreateFromFile(offsetPath, FileMode.OpenOrCreate, null, 4,
-            MemoryMappedFileAccess.ReadWrite);
-
-        _offsetAccessor = _offsetFile.CreateViewAccessor(0, 4, MemoryMappedFileAccess.ReadWrite);
-        _offsetAccessor.Read(0, out _offset);
+        _offsetFile = new OffsetMappedFile(offsetPath);
 
         _itemSize = Marshal.SizeOf<T>();
 
@@ -50,7 +44,7 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
             }
         }
 
-        if (_offset > _segment.AllowedLastOffsetToWrite)
+        if (_offsetFile.Offset > _segment.AllowedLastOffsetToWrite)
         {
             _segment.Dispose();
             _segment = null;
@@ -61,7 +55,7 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
         var spinWait = new SpinWait();
         var startTicks = DateTime.UtcNow.Ticks;
 
-        while (!_segment.TryRead(_offset, out item))
+        while (!_segment.TryRead(_offsetFile.Offset, out item))
         {
             if ((DateTime.UtcNow.Ticks - startTicks) / TimeSpan.TicksPerMillisecond > spinWaitTimeoutMs)
             {
@@ -76,14 +70,12 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
 
     public void Commit()
     {
-        _offset = _offset + _itemSize + 1;
-        _offsetAccessor.Write(0, ref _offset);
+        _offsetFile.Advance(_itemSize + 1);
     }
 
     public void Dispose()
     {
         _offsetFile.Dispose();
-        _offsetAccessor.Dispose();
         _segment?.Dispose();
     }
 
@@ -91,7 +83,7 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
         MappedFileSegment<T>.TryCreateOrFindByOffset(
             _segmentDirectory,
             _options.SegmentSize,
-            _offset,
+            _offsetFile.Offset,
             true,
             out _segment);
 }
