@@ -140,7 +140,8 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
         bool readOnly,
         [MaybeNullWhen(false)] out MappedFileSegment<T> segment)
     {
-        var fileName = GetFileName(fileSize, offset);
+        var fileStartOffset = GetFileStartOffset(fileSize, offset);
+        var fileName = fileStartOffset.ToString("D20");
 
         var filePath = Path.Combine(directory, fileName);
 
@@ -163,19 +164,19 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
         segment = new MappedFileSegment<T>(
             filePath,
             fileSize,
-            offset,
+            fileStartOffset,
             readOnly);
 
         return true;
     }
 
-    // get the name of the file which contains the offset
-    private static string GetFileName(int fileSize, long offset)
+    private static long GetFileStartOffset(int fileSize, long offset)
     {
         var itemSize = Marshal.SizeOf<T>();
         var maxItems = fileSize / (itemSize + 1);
-        var maxBytesCanBeUsed = maxItems * (itemSize + 1);
-        var fileName = offset / maxBytesCanBeUsed * maxBytesCanBeUsed;
-        return fileName.ToString("D20");
+        var adjustedFileSize = maxItems * (itemSize + 1);
+        var fileStartOffset = offset / adjustedFileSize * adjustedFileSize;
+
+        return fileStartOffset;
     }
 }
