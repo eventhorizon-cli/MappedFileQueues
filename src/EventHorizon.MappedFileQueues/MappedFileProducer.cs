@@ -1,11 +1,11 @@
-using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 
 namespace EventHorizon.MappedFileQueues;
 
-internal class MappedFileProducer<T> : IMappedFileProducer<T> where T : struct
+internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where T : struct
 {
     private readonly MappedFileQueueOptions _options;
+    private bool _disposed;
 
     // Memory mapped file to store the producer offset
     private readonly OffsetMappedFile _offsetFile;
@@ -35,6 +35,11 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T> where T : struct
 
     public void Produce(ref T item)
     {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(MappedFileProducer<T>));
+        }
+
         if (_segment == null)
         {
             // Initialize the first segment
@@ -56,6 +61,10 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T> where T : struct
 
     public void Dispose()
     {
+        if (_disposed)
+        {
+            return;
+        }
         _offsetFile.Dispose();
         _segment?.Dispose();
     }

@@ -16,15 +16,15 @@ var segmentSize = 512 * 1024 * 1024;
 var itemSize = Marshal.SizeOf<TestStruct>();
 var maxItems = segmentSize * 2 / itemSize;
 
-var mappedFileQueue = MappedFileQueue.Create<TestStruct>(new MappedFileQueueOptions
+using var mappedFileQueue = MappedFileQueue.Create<TestStruct>(new MappedFileQueueOptions
 {
-    StorePath = "test",
+    StorePath = testDirectory,
     SegmentSize = segmentSize
 });
 
-using var producer = mappedFileQueue.CreateProducer();
+var producer = mappedFileQueue.Producer;
 
-using var consumer = mappedFileQueue.CreateConsumer();
+var consumer = mappedFileQueue.Consumer;
 
 var sw = Stopwatch.StartNew();
 unsafe

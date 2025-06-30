@@ -2,9 +2,10 @@ using System.Runtime.InteropServices;
 
 namespace EventHorizon.MappedFileQueues;
 
-internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
+internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where T : struct
 {
     private readonly MappedFileQueueOptions _options;
+    private bool _disposed;
 
     // Memory mapped file to store the consumer offset
     private readonly OffsetMappedFile _offsetFile;
@@ -34,6 +35,11 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
 
     public void Consume(out T item)
     {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(MappedFileConsumer<T>));
+        }
+
         int retryIntervalMs = 1000;
         int spinWaitTimeoutMs = 100;
         while (_segment == null)
@@ -70,11 +76,21 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T> where T : struct
 
     public void Commit()
     {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(MappedFileConsumer<T>));
+        }
+        
         _offsetFile.Advance(_itemSize + 1);
     }
 
     public void Dispose()
     {
+        if (_disposed)
+        {
+            return;
+        }
+        _disposed = true;
         _offsetFile.Dispose();
         _segment?.Dispose();
     }
