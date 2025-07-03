@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 
-namespace EventHorizon.MappedFileQueues;
+namespace MappedFileQueues;
 
 internal sealed class MappedFileSegment<T> : IDisposable where T : struct
 {
@@ -13,7 +13,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
 
     private MappedFileSegment(
         string filePath,
-        int fileSize,
+        long fileSize,
         long fileStartOffset,
         bool readOnly)
     {
@@ -56,16 +56,28 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
         _viewAccessor = _mmf.CreateViewAccessor(0, adjustedFileSize);
     }
 
+    /// <summary>
+    /// The size of the segment in bytes.
+    /// </summary>
     public long Size { get; }
 
-    public int AllowedItemCount { get; }
+    /// <summary>
+    /// The maximum number of items that can be stored in this segment.
+    /// </summary>
+    public long AllowedItemCount { get; }
 
+    /// <summary>
+    /// The start offset of the segment, which is the first valid offset for writing.
+    /// </summary>
     public long StartOffset { get; }
 
+    /// <summary>
+    /// The end offset of the segment, which is the last valid offset plus the size of the item.
+    /// </summary>
     public long EndOffset { get; }
 
     /// <summary>
-    /// The maximum offset that can be used for writing.
+    /// The last offset that can be used for writing items in this segment.
     /// </summary>
     public long AllowedLastOffsetToWrite { get; }
 
@@ -125,19 +137,46 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
     }
 
     /// <summary>
-    /// Try to creat or find the file segment which contains the offset.
+    /// Finds or creates a new <see cref="MappedFileSegment{T}"/> instance based on the specified parameters.
     /// </summary>
     /// <param name="directory">The directory path where the files is stored.</param>
     /// <param name="fileSize">The size of the file, may be adjusted to fit the data type.</param>
-    /// <param name="offset">The offset which is stored in the file.</param>
-    /// <param name="readOnly">True if the file is opened in read only mode, otherwise false.</param>
-    /// <param name="segment">The segment which contains the offset.</param>
-    /// <returns>True if the file exists and the segment is created, otherwise false.</returns>
-    public static bool TryCreateOrFindByOffset(
+    /// <param name="offset">The offset of the item stored in the file.</param>
+    /// <returns>A new instance of <see cref="MappedFileSegment{T}"/>.</returns>
+    public static MappedFileSegment<T> FindOrCreate(
         string directory,
-        int fileSize,
+        long fileSize,
+        long offset)
+    {
+        var fileStartOffset = GetFileStartOffset(fileSize, offset);
+        var fileName = fileStartOffset.ToString("D20");
+
+        var filePath = Path.Combine(directory, fileName);
+
+        if (!Directory.Exists(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        return new MappedFileSegment<T>(
+            filePath,
+            fileSize,
+            fileStartOffset,
+            readOnly: false);
+    }
+
+    /// <summary>
+    /// Tries to find a <see cref="MappedFileSegment{T}"/> instance based on the specified parameters.
+    /// </summary>
+    /// <param name="directory">The directory path where the files is stored.</param>
+    /// <param name="fileSize">The size of the file, may be adjusted to fit the data type.</param>
+    /// <param name="offset">The offset of the item stored in the file.</param>
+    /// <param name="segment">The found segment, or null if not found.</param>
+    /// <returns>True if the segment was found; otherwise, false.</returns>
+    public static bool TryFind(
+        string directory,
+        long fileSize,
         long offset,
-        bool readOnly,
         [MaybeNullWhen(false)] out MappedFileSegment<T> segment)
     {
         var fileStartOffset = GetFileStartOffset(fileSize, offset);
@@ -145,32 +184,21 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
 
         var filePath = Path.Combine(directory, fileName);
 
-        if (readOnly)
+        if (!File.Exists(filePath))
         {
-            if (!File.Exists(filePath))
-            {
-                segment = null;
-                return false;
-            }
-        }
-        else
-        {
-            if (!Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
+            segment = null;
+            return false;
         }
 
         segment = new MappedFileSegment<T>(
             filePath,
             fileSize,
             fileStartOffset,
-            readOnly);
-
+            readOnly: true);
         return true;
     }
 
-    private static long GetFileStartOffset(int fileSize, long offset)
+    private static long GetFileStartOffset(long fileSize, long offset)
     {
         var itemSize = Marshal.SizeOf<T>();
         var maxItems = fileSize / (itemSize + 1);

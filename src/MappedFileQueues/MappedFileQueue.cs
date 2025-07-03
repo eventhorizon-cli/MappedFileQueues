@@ -1,4 +1,4 @@
-namespace EventHorizon.MappedFileQueues;
+namespace MappedFileQueues;
 
 public static class MappedFileQueue
 {

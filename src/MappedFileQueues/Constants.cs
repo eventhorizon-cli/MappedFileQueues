@@ -1,4 +1,4 @@
-namespace EventHorizon.MappedFileQueues;
+namespace MappedFileQueues;
 
 internal class Constants
 {

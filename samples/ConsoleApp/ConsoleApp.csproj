@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\src\EventHorizon.MappedFileQueues\EventHorizon.MappedFileQueues.csproj" />
+      <ProjectReference Include="..\..\src\MappedFileQueues\MappedFileQueues.csproj" />
     </ItemGroup>
 
 </Project>

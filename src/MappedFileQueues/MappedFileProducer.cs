@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace EventHorizon.MappedFileQueues;
+namespace MappedFileQueues;
 
 internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where T : struct
 {
@@ -40,19 +40,7 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where
             throw new ObjectDisposedException(nameof(MappedFileProducer<T>));
         }
 
-        if (_segment == null)
-        {
-            // Initialize the first segment
-            OpenOrCreateSegmentByOffset();
-        }
-
-        // The first segment is initialized in the constructor
-        while (_segment.AllowedLastOffsetToWrite < _offsetFile.Offset)
-        {
-            // Not enough space in the current segment, create a new one
-            _segment.Dispose();
-            OpenOrCreateSegmentByOffset();
-        }
+        _segment ??= FindOrCreateSegmentByOffset();
 
         _segment.Write(_offsetFile.Offset, ref item);
 
@@ -65,22 +53,38 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where
         {
             return;
         }
+
+        _disposed = true;
         _offsetFile.Dispose();
         _segment?.Dispose();
     }
 
     private void Commit()
     {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(MappedFileProducer<T>));
+        }
+
+        if (_segment == null)
+        {
+            throw new InvalidOperationException("Segment is not initialized.");
+        }
+
         _offsetFile.Advance(_itemSize + 1);
+
+        // Check if the segment has reached its limit
+        if (_segment!.AllowedLastOffsetToWrite < _offsetFile.Offset)
+        {
+            // Dispose the current segment and will create a new one on the next Produce call
+            _segment.Dispose();
+            _segment = null;
+        }
     }
 
-    private void OpenOrCreateSegmentByOffset()
-    {
-        MappedFileSegment<T>.TryCreateOrFindByOffset(
+    private MappedFileSegment<T> FindOrCreateSegmentByOffset() =>
+        MappedFileSegment<T>.FindOrCreate(
             _segmentDirectory,
             _options.SegmentSize,
-            _offsetFile.Offset,
-            false,
-            out _segment);
-    }
+            _offsetFile.Offset);
 }

@@ -1,6 +1,7 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
-namespace EventHorizon.MappedFileQueues;
+namespace MappedFileQueues;
 
 internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where T : struct
 {
@@ -40,32 +41,26 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
             throw new ObjectDisposedException(nameof(MappedFileConsumer<T>));
         }
 
-        int retryIntervalMs = 1000;
-        int spinWaitTimeoutMs = 100;
+        var retryIntervalMs = (int)_options.ConsumerRetryInterval.TotalMilliseconds;
+        var spinWaitDurationMs = (int)_options.ConsumerSpinWaitDuration.TotalMilliseconds;
+
         while (_segment == null)
         {
-            if (!TryFindSegmentByOffset())
+            if (!TryFindSegmentByOffset(out _segment))
             {
                 Thread.Sleep(retryIntervalMs);
             }
         }
-
-        if (_offsetFile.Offset > _segment.AllowedLastOffsetToWrite)
-        {
-            _segment.Dispose();
-            _segment = null;
-            Consume(out item);
-        }
-
 
         var spinWait = new SpinWait();
         var startTicks = DateTime.UtcNow.Ticks;
 
         while (!_segment.TryRead(_offsetFile.Offset, out item))
         {
-            if ((DateTime.UtcNow.Ticks - startTicks) / TimeSpan.TicksPerMillisecond > spinWaitTimeoutMs)
+            // Spin wait until the item is available or timeout
+            if ((DateTime.UtcNow.Ticks - startTicks) / TimeSpan.TicksPerMillisecond > spinWaitDurationMs)
             {
-                // Spin wait until the item is available or timeout
+                // Sleep for a short interval before retrying if spin wait times out
                 Thread.Sleep(retryIntervalMs);
             }
 
@@ -80,8 +75,21 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
         {
             throw new ObjectDisposedException(nameof(MappedFileConsumer<T>));
         }
-        
+
+        if (_segment == null)
+        {
+            throw new InvalidOperationException(
+                $"No matched segment found. Ensure {nameof(Consume)} is called before {nameof(Commit)}.");
+        }
+
         _offsetFile.Advance(_itemSize + 1);
+
+        // Check if the segment is fully consumed
+        if (_offsetFile.Offset > _segment.AllowedLastOffsetToWrite)
+        {
+            _segment.Dispose();
+            _segment = null;
+        }
     }
 
     public void Dispose()
@@ -90,16 +98,15 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
         {
             return;
         }
+
         _disposed = true;
         _offsetFile.Dispose();
         _segment?.Dispose();
     }
 
-    private bool TryFindSegmentByOffset() =>
-        MappedFileSegment<T>.TryCreateOrFindByOffset(
+    private bool TryFindSegmentByOffset([MaybeNullWhen(false)] out MappedFileSegment<T> segment) =>
+        MappedFileSegment<T>.TryFind(
             _segmentDirectory,
             _options.SegmentSize,
-            _offsetFile.Offset,
-            true,
-            out _segment);
+            _offsetFile.Offset, out segment);
 }

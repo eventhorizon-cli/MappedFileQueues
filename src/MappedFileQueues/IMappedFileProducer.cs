@@ -1,4 +1,4 @@
-namespace EventHorizon.MappedFileQueues;
+namespace MappedFileQueues;
 
 public interface IMappedFileProducer<T> where T : struct
 {

@@ -1,4 +1,4 @@
-namespace EventHorizon.MappedFileQueues;
+namespace MappedFileQueues;
 
 public sealed class MappedFileQueue<T> : IDisposable where T : struct
 {

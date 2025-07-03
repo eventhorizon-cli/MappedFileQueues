@@ -1,6 +1,6 @@
 using System.IO.MemoryMappedFiles;
 
-namespace EventHorizon.MappedFileQueues;
+namespace MappedFileQueues;
 
 internal class OffsetMappedFile : IDisposable
 {

@@ -1,8 +1,8 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using ConsoleApp;
-using EventHorizon.MappedFileQueues;
+using MappedFileQueues;
 
 // Clean up the test directory
 var testDirectory = "test";
@@ -99,7 +99,7 @@ Console.WriteLine($"Completed reading {segmentSize * 2 / itemSize} items in {sw.
 
 
 // If you want to use the string in the struct, you can use the following method to convert it back to a managed string
-unsafe string ToManagedString(char* source, int maxLength)
+unsafe string? ToManagedString(char* source, int maxLength)
 {
     if (source == null)
     {
