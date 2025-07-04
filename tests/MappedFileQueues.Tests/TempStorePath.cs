@@ -11,16 +11,18 @@ public class TempStorePath : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(Path))
+        if (!Directory.Exists(Path))
         {
-            try
-            {
-                Directory.Delete(Path, true);
-            }
-            catch (IOException)
-            {
-                // Ignore IO exceptions during cleanup
-            }
+            return;
+        }
+
+        try
+        {
+            Directory.Delete(Path, true);
+        }
+        catch (IOException)
+        {
+            // Ignore IO exceptions during cleanup
         }
     }
 
