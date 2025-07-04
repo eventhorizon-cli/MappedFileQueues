@@ -48,8 +48,8 @@ public class MappedFileQueueTests
         var options = new MappedFileQueueOptions
         {
             StorePath = tempStorePath.Path,
-            SegmentSize = 33, // will be 32 bytes per segment
-            ConsumerRetryInterval = TimeSpan.FromMilliseconds(120),
+            SegmentSize = 1024,
+            ConsumerRetryInterval = TimeSpan.FromMilliseconds(100),
             ConsumerSpinWaitDuration = TimeSpan.FromMilliseconds(50)
         };
 
@@ -73,14 +73,14 @@ public class MappedFileQueueTests
 
         var producer = queue.Producer;
 
-        // for (var i = 0; i < 10; i++)
-        // {
-        //     await Task.Delay(100); // for testing the spin wait in the consumer
-        //     var testStruct = new TestStructSize16 { A = i, B = i + 1, C = i + 2, D = i + 3 };
-        //
-        //     producer.Produce(ref testStruct);
-        // }
-        //
+        for (var i = 0; i < 10; i++)
+        {
+            await Task.Delay(200); // for testing the spin wait in the consumer
+            var testStruct = new TestStructSize16 { A = i, B = i + 1, C = i + 2, D = i + 3 };
+
+            producer.Produce(ref testStruct);
+        }
+
         await consumeTask;
     }
 }
