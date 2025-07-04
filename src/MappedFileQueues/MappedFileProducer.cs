@@ -35,10 +35,7 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where
 
     public void Produce(ref T item)
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(MappedFileProducer<T>));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         _segment ??= FindOrCreateSegmentByOffset();
 
@@ -61,10 +58,7 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where
 
     private void Commit()
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(MappedFileProducer<T>));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         if (_segment == null)
         {
@@ -74,7 +68,7 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where
         _offsetFile.Advance(_itemSize + 1);
 
         // Check if the segment has reached its limit
-        if (_segment!.AllowedLastOffsetToWrite < _offsetFile.Offset)
+        if (_segment.AllowedLastOffsetToWrite < _offsetFile.Offset)
         {
             // Dispose the current segment and will create a new one on the next Produce call
             _segment.Dispose();
