@@ -83,41 +83,41 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
 
     public void Write(long offset, ref T value)
     {
-        var actualOffset = offset - StartOffset;
-
-        if (actualOffset < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(offset),
-                $"Offset {offset} must be greater than or equal to the start offset {StartOffset}.");
-        }
-
-        if (actualOffset > AllowedLastOffsetToWrite)
+        if (offset > AllowedLastOffsetToWrite)
         {
             throw new ArgumentOutOfRangeException(nameof(offset),
                 $"Offset {offset} must be less than the allowed end offset {AllowedLastOffsetToWrite}.");
         }
 
-        _viewAccessor.Write(actualOffset, ref value);
-        _viewAccessor.Write(actualOffset + _itemSize, Constants.MagicByte);
+        var segmentRelativeOffset = offset - StartOffset;
+
+        if (segmentRelativeOffset < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(offset),
+                $"Offset {offset} must be greater than or equal to the start offset {StartOffset}.");
+        }
+
+        _viewAccessor.Write(segmentRelativeOffset, ref value);
+        _viewAccessor.Write(segmentRelativeOffset + _itemSize, Constants.MagicByte);
     }
 
     public bool TryRead(long offset, out T value)
     {
-        var actualOffset = offset - StartOffset;
-
-        if (actualOffset < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(offset),
-                $"Offset {offset} must be greater than or equal to the start offset {StartOffset}.");
-        }
-
-        if (actualOffset > AllowedLastOffsetToWrite)
+        if (offset > AllowedLastOffsetToWrite)
         {
             throw new ArgumentOutOfRangeException(nameof(offset),
                 $"Offset {offset} must be less than the allowed end offset {AllowedLastOffsetToWrite}.");
         }
 
-        var magicByte = _viewAccessor.ReadByte(actualOffset + _itemSize);
+        var segmentRelativeOffset = offset - StartOffset;
+
+        if (segmentRelativeOffset < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(offset),
+                $"Offset {offset} must be greater than or equal to the start offset {StartOffset}.");
+        }
+
+        var magicByte = _viewAccessor.ReadByte(segmentRelativeOffset + _itemSize);
 
         if (magicByte != Constants.MagicByte)
         {
@@ -125,7 +125,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
             return false;
         }
 
-        _viewAccessor.Read(actualOffset, out value);
+        _viewAccessor.Read(segmentRelativeOffset, out value);
         return true;
     }
 
