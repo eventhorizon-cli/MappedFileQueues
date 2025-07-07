@@ -6,7 +6,6 @@ namespace MappedFileQueues;
 internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where T : struct
 {
     private readonly MappedFileQueueOptions _options;
-    private bool _disposed;
 
     // Memory mapped file to store the consumer offset
     private readonly OffsetMappedFile _offsetFile;
@@ -14,7 +13,10 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
     private readonly int _itemSize;
 
     private readonly string _segmentDirectory;
+
     private MappedFileSegment<T>? _segment;
+
+    private bool _disposed;
 
     public MappedFileConsumer(MappedFileQueueOptions options)
     {
@@ -36,10 +38,7 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
 
     public void Consume(out T item)
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(MappedFileConsumer<T>));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         var retryIntervalMs = (int)_options.ConsumerRetryInterval.TotalMilliseconds;
         var spinWaitDurationMs = (int)_options.ConsumerSpinWaitDuration.TotalMilliseconds;
@@ -71,10 +70,7 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
 
     public void Commit()
     {
-        if (_disposed)
-        {
-            throw new ObjectDisposedException(nameof(MappedFileConsumer<T>));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, this);
 
         if (_segment == null)
         {
@@ -82,7 +78,7 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
                 $"No matched segment found. Ensure {nameof(Consume)} is called before {nameof(Commit)}.");
         }
 
-        _offsetFile.Advance(_itemSize + 1);
+        _offsetFile.Advance(_itemSize + Constants.EndMarkerSize);
 
         // Check if the segment is fully consumed
         if (_offsetFile.Offset > _segment.AllowedLastOffsetToWrite)
@@ -108,5 +104,6 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
         MappedFileSegment<T>.TryFind(
             _segmentDirectory,
             _options.SegmentSize,
-            _offsetFile.Offset, out segment);
+            _offsetFile.Offset,
+            out segment);
 }

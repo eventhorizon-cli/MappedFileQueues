@@ -5,7 +5,6 @@ namespace MappedFileQueues;
 internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where T : struct
 {
     private readonly MappedFileQueueOptions _options;
-    private bool _disposed;
 
     // Memory mapped file to store the producer offset
     private readonly OffsetMappedFile _offsetFile;
@@ -13,7 +12,10 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where
     private readonly int _itemSize;
 
     private readonly string _segmentDirectory;
+
     private MappedFileSegment<T>? _segment;
+
+    private bool _disposed;
 
     public MappedFileProducer(MappedFileQueueOptions options)
     {
@@ -65,7 +67,7 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where
             throw new InvalidOperationException("Segment is not initialized.");
         }
 
-        _offsetFile.Advance(_itemSize + 1);
+        _offsetFile.Advance(_itemSize + Constants.EndMarkerSize);
 
         // Check if the segment has reached its limit
         if (_segment.AllowedLastOffsetToWrite < _offsetFile.Offset)

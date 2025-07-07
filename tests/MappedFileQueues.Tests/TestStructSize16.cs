@@ -1,4 +1,4 @@
-namespace MappedFileQueues.Tests.TestStructs;
+namespace MappedFileQueues.Tests;
 
 public struct TestStructSize16
 {

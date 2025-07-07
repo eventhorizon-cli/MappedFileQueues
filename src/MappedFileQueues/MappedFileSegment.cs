@@ -32,8 +32,8 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
 
         // 1 byte for magic byte
         _itemSize = Marshal.SizeOf<T>();
-        AllowedItemCount = fileSize / (_itemSize + 1);
-        AllowedLastOffsetToWrite = fileStartOffset + (AllowedItemCount - 1) * (_itemSize + 1);
+        AllowedItemCount = fileSize / (_itemSize + Constants.EndMarkerSize);
+        AllowedLastOffsetToWrite = fileStartOffset + (AllowedItemCount - 1) * (_itemSize + Constants.EndMarkerSize);
         EndOffset = AllowedLastOffsetToWrite + _itemSize;
 
         var adjustedFileSize = EndOffset - fileStartOffset + 1;
@@ -98,7 +98,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
         }
 
         _viewAccessor.Write(segmentRelativeOffset, ref value);
-        _viewAccessor.Write(segmentRelativeOffset + _itemSize, Constants.MagicByte);
+        _viewAccessor.Write(segmentRelativeOffset + _itemSize, Constants.EndMarker);
     }
 
     public bool TryRead(long offset, out T value)
@@ -117,9 +117,9 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
                 $"Offset {offset} must be greater than or equal to the start offset {StartOffset}.");
         }
 
-        var magicByte = _viewAccessor.ReadByte(segmentRelativeOffset + _itemSize);
+        var endMarker = _viewAccessor.ReadByte(segmentRelativeOffset + _itemSize);
 
-        if (magicByte != Constants.MagicByte)
+        if (endMarker != Constants.EndMarker)
         {
             value = default;
             return false;
@@ -139,7 +139,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
     /// <summary>
     /// Finds or creates a new <see cref="MappedFileSegment{T}"/> instance based on the specified parameters.
     /// </summary>
-    /// <param name="directory">The directory path where the files is stored.</param>
+    /// <param name="directory">The directory path where the files are stored.</param>
     /// <param name="fileSize">The size of the file, may be adjusted to fit the data type.</param>
     /// <param name="offset">The offset of the item stored in the file.</param>
     /// <returns>A new instance of <see cref="MappedFileSegment{T}"/>.</returns>
@@ -168,7 +168,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
     /// <summary>
     /// Tries to find a <see cref="MappedFileSegment{T}"/> instance based on the specified parameters.
     /// </summary>
-    /// <param name="directory">The directory path where the files is stored.</param>
+    /// <param name="directory">The directory path where the files are stored.</param>
     /// <param name="fileSize">The size of the file, may be adjusted to fit the data type.</param>
     /// <param name="offset">The offset of the item stored in the file.</param>
     /// <param name="segment">The found segment, or null if not found.</param>
