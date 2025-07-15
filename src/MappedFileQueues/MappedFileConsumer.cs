@@ -10,7 +10,7 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
     // Memory mapped file to store the consumer offset
     private readonly OffsetMappedFile _offsetFile;
 
-    private readonly int _itemSize;
+    private readonly int _payloadSize;
 
     private readonly string _segmentDirectory;
 
@@ -31,10 +31,12 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
         var offsetPath = Path.Combine(offsetDir, Constants.ConsumerOffsetFile);
         _offsetFile = new OffsetMappedFile(offsetPath);
 
-        _itemSize = Marshal.SizeOf<T>();
+        _payloadSize = Marshal.SizeOf<T>();
 
         _segmentDirectory = Path.Combine(options.StorePath, Constants.CommitLogDirectory);
     }
+
+    public long NextOffset => _offsetFile.Offset;
 
     public void Consume(out T item)
     {
@@ -78,7 +80,7 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
                 $"No matched segment found. Ensure {nameof(Consume)} is called before {nameof(Commit)}.");
         }
 
-        _offsetFile.Advance(_itemSize + Constants.EndMarkerSize);
+        _offsetFile.Advance(_payloadSize + Constants.EndMarkerSize);
 
         // Check if the segment is fully consumed
         if (_offsetFile.Offset > _segment.AllowedLastOffsetToWrite)

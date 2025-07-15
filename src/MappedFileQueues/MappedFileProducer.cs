@@ -9,7 +9,7 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where
     // Memory mapped file to store the producer offset
     private readonly OffsetMappedFile _offsetFile;
 
-    private readonly int _itemSize;
+    private readonly int _payloadSize;
 
     private readonly string _segmentDirectory;
 
@@ -30,10 +30,12 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where
         var offsetPath = Path.Combine(offsetDir, Constants.ProducerOffsetFile);
         _offsetFile = new OffsetMappedFile(offsetPath);
 
-        _itemSize = Marshal.SizeOf<T>();
+        _payloadSize = Marshal.SizeOf<T>();
 
         _segmentDirectory = Path.Combine(options.StorePath, Constants.CommitLogDirectory);
     }
+
+    public long NextOffset => _offsetFile.Offset;
 
     public void Produce(ref T item)
     {
@@ -67,7 +69,7 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where
             throw new InvalidOperationException("Segment is not initialized.");
         }
 
-        _offsetFile.Advance(_itemSize + Constants.EndMarkerSize);
+        _offsetFile.Advance(_payloadSize + Constants.EndMarkerSize);
 
         // Check if the segment has reached its limit
         if (_segment.AllowedLastOffsetToWrite < _offsetFile.Offset)

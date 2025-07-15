@@ -13,8 +13,8 @@ if (Directory.Exists(testDirectory))
 
 var segmentSize = 512 * 1024 * 1024;
 
-var itemSize = Marshal.SizeOf<TestStruct>();
-var maxItems = segmentSize * 2 / itemSize;
+var messageSize = Marshal.SizeOf<TestStruct>() + 1;
+var maxItems = segmentSize * 2 / messageSize;
 
 using var mappedFileQueue = MappedFileQueue.Create<TestStruct>(new MappedFileQueueOptions
 {
@@ -64,7 +64,7 @@ unsafe
     }
 }
 
-Console.WriteLine($"Completed writing {segmentSize * 2 / itemSize} items in {sw.ElapsedMilliseconds} ms");
+Console.WriteLine($"Completed writing {segmentSize * 2 / messageSize} items in {sw.ElapsedMilliseconds} ms");
 
 sw.Restart();
 for (var i = 1; i <= maxItems; i++)
@@ -95,7 +95,7 @@ for (var i = 1; i <= maxItems; i++)
     }
 }
 
-Console.WriteLine($"Completed reading {segmentSize * 2 / itemSize} items in {sw.ElapsedMilliseconds} ms");
+Console.WriteLine($"Completed reading {segmentSize * 2 / messageSize} items in {sw.ElapsedMilliseconds} ms");
 
 
 // If you want to use the string in the struct, you can use the following method to convert it back to a managed string

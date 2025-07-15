@@ -34,7 +34,7 @@ internal class OffsetMappedFile : IDisposable
 
     public void Advance(long step)
     {
-        _offset += step;
+        _offset += (long)step;
         _vierAccessor.Write(0, _offset);
     }
 

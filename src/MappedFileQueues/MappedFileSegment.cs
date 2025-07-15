@@ -9,7 +9,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
     private readonly FileStream _fileStream;
     private readonly MemoryMappedFile _mmf;
     private readonly MemoryMappedViewAccessor _viewAccessor;
-    private readonly int _itemSize;
+    private readonly int _payloadSize;
 
     private MappedFileSegment(
         string filePath,
@@ -30,11 +30,12 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
 
         StartOffset = fileStartOffset;
 
-        // 1 byte for magic byte
-        _itemSize = Marshal.SizeOf<T>();
-        AllowedItemCount = fileSize / (_itemSize + Constants.EndMarkerSize);
-        AllowedLastOffsetToWrite = fileStartOffset + (AllowedItemCount - 1) * (_itemSize + Constants.EndMarkerSize);
-        EndOffset = AllowedLastOffsetToWrite + _itemSize;
+        _payloadSize = Marshal.SizeOf<T>();
+        var messageSize = _payloadSize + Constants.EndMarkerSize;
+
+        AllowedItemCount = fileSize / messageSize;
+        AllowedLastOffsetToWrite = fileStartOffset + (AllowedItemCount - 1) * messageSize;
+        EndOffset = AllowedLastOffsetToWrite + messageSize;
 
         var adjustedFileSize = EndOffset - fileStartOffset + 1;
         Size = adjustedFileSize;
@@ -98,7 +99,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
         }
 
         _viewAccessor.Write(segmentRelativeOffset, ref value);
-        _viewAccessor.Write(segmentRelativeOffset + _itemSize, Constants.EndMarker);
+        _viewAccessor.Write(segmentRelativeOffset + _payloadSize, Constants.EndMarker);
     }
 
     public bool TryRead(long offset, out T value)
@@ -117,7 +118,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
                 $"Offset {offset} must be greater than or equal to the start offset {StartOffset}.");
         }
 
-        var endMarker = _viewAccessor.ReadByte(segmentRelativeOffset + _itemSize);
+        var endMarker = _viewAccessor.ReadByte(segmentRelativeOffset + _payloadSize);
 
         if (endMarker != Constants.EndMarker)
         {
@@ -200,9 +201,9 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
 
     private static long GetFileStartOffset(long fileSize, long offset)
     {
-        var itemSize = Marshal.SizeOf<T>();
-        var maxItems = fileSize / (itemSize + 1);
-        var adjustedFileSize = maxItems * (itemSize + 1);
+        var payloadSize = Marshal.SizeOf<T>();
+        var maxItems = fileSize / (payloadSize + 1);
+        var adjustedFileSize = maxItems * (payloadSize + 1);
         var fileStartOffset = offset / adjustedFileSize * adjustedFileSize;
 
         return fileStartOffset;
