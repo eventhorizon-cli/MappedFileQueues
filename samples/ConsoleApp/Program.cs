@@ -11,10 +11,10 @@ if (Directory.Exists(testDirectory))
     Directory.Delete(testDirectory, true);
 }
 
-var segmentSize = 512 * 1024 * 1024;
+var segmentSize = 512 * 1024 * 1024; // 512 MB
 
-var messageSize = Marshal.SizeOf<TestStruct>() + 1;
-var maxItems = segmentSize * 2 / messageSize;
+var itemSize = Marshal.SizeOf<TestStruct>();
+var items = 20_000_000;
 
 using var mappedFileQueue = MappedFileQueue.Create<TestStruct>(new MappedFileQueueOptions
 {
@@ -29,7 +29,7 @@ var consumer = mappedFileQueue.Consumer;
 var sw = Stopwatch.StartNew();
 unsafe
 {
-    for (var i = 1; i <= maxItems; i++)
+    for (var i = 1; i <= items; i++)
     {
         var testStruct = new TestStruct
         {
@@ -52,7 +52,7 @@ unsafe
                               $"{nameof(testStruct.StringValue)} = {testString}");
         }
 
-        if (i == maxItems)
+        if (i == items)
         {
             Console.WriteLine($"The last item: {nameof(testStruct.IntValue)} = {testStruct.IntValue}, " +
                               $"{nameof(testStruct.LongValue)} = {testStruct.LongValue}, " +
@@ -64,10 +64,10 @@ unsafe
     }
 }
 
-Console.WriteLine($"Completed writing {segmentSize * 2 / messageSize} items in {sw.ElapsedMilliseconds} ms");
+Console.WriteLine($"Completed writing {segmentSize * 2 / itemSize} items in {sw.ElapsedMilliseconds} ms");
 
 sw.Restart();
-for (var i = 1; i <= maxItems; i++)
+for (var i = 1; i <= items; i++)
 {
     consumer.Consume(out TestStruct testStruct);
     consumer.Commit();
@@ -83,7 +83,7 @@ for (var i = 1; i <= maxItems; i++)
         }
     }
 
-    if (i == maxItems)
+    if (i == items)
     {
         unsafe
         {
@@ -95,7 +95,7 @@ for (var i = 1; i <= maxItems; i++)
     }
 }
 
-Console.WriteLine($"Completed reading {segmentSize * 2 / messageSize} items in {sw.ElapsedMilliseconds} ms");
+Console.WriteLine($"Completed reading {segmentSize * 2 / itemSize} items in {sw.ElapsedMilliseconds} ms");
 
 
 // If you want to use the string in the struct, you can use the following method to convert it back to a managed string
