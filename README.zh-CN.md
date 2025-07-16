@@ -1,6 +1,9 @@
 MappedFileQueues
 =================
 
+[![codecov](https://codecov.io/gh/eventhorizon-cli/MappedFileQueues/graph/badge.svg?token=GYTOIKCXD5)](https://codecov.io/gh/eventhorizon-cli/MappedFileQueues)
+[![Nuget](https://img.shields.io/nuget/v/MappedFileQueues)](https://www.nuget.org/packages/MappedFileQueues/)
+
 English | [简体中文](./README.zh-CN.md)
 
 **MappedFileQueues** 是一个基于内存映射文件（Memory-Mapped Files）的高性能队列，专为进程间通信（IPC）设计。
