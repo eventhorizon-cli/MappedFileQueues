@@ -105,9 +105,9 @@ public unsafe struct TestStruct
 创建 MappedFileQueues 实例获取单例的生产者和消费者，并进行数据的生产和消费：
 
 ```csharp
-var storePath = "test"; // 存储路径
+var storePath = "test";
 
-// 如果已经跑过测试，先先删除之前的数据
+// 如果之前运行过测试，先删除之前的数据
 if (Directory.Exists(storePath))
 {
     Directory.Delete(storePath, true);
@@ -115,8 +115,7 @@ if (Directory.Exists(storePath))
 
 var queue = MappedFileQueue.Create<TestStruct>(new MappedFileQueueOptions
 {
-    StorePath = storePath,
-    SegmentSize = 512 * 1024 * 1024 // 512 MB
+    StorePath = storePath, SegmentSize = 512 * 1024 * 1024 // 512 MB
 });
 
 var producer = queue.Producer;
@@ -125,20 +124,18 @@ var consumer = queue.Consumer;
 
 var produceTask = Task.Run(() =>
 {
-    for (var i = 0; i < 100; i++)
+    for (var i = 1; i <= 100; i++)
     {
-        var testStruct = new TestStruct
-        {
-            IntValue = i,
-            LongValue = i * 10,
-            DoubleValue = i / 2.0,
-        };
+        var testStruct = new TestStruct { IntValue = i, LongValue = i * 10, DoubleValue = i / 2.0 };
 
-        // 如果你想在结构体中使用字符串，可以使用以下方法将其转换为 fixed 数组
-        var testString = "TestString" + i;
-        fixed (char* fixedChar = testString)
+        // 如果你想在结构体中使用字符串，可以用下面的方法复制到固定数组
+        var testString = "TestString_" + i;
+        unsafe
         {
-            Unsafe.CopyBlock(testStruct.StringValue, fixedChar, sizeof(char) * (uint)testString.Length);
+            fixed (char* fixedChar = testString)
+            {
+                Unsafe.CopyBlock(testStruct.StringValue, fixedChar, sizeof(char) * (uint)testString.Length);
+            }
         }
 
         producer.Produce(ref testStruct);
@@ -149,17 +146,20 @@ var produceTask = Task.Run(() =>
 
 var consumeTask = Task.Run(() =>
 {
-    for (var i = 0; i < 100; i++)
+    for (var i = 1; i <= 100; i++)
     {
-        var testStruct = consumer.Consume<TestStruct>();
-        Console.WriteLine($"Consumed: IntValue={testStruct.IntValue}, LongValue={testStruct.LongValue}, DoubleValue={testStruct.DoubleValue}");
+        consumer.Consume(out var testStruct);
+        Console.WriteLine(
+            $"Consumed: IntValue={testStruct.IntValue}, LongValue={testStruct.LongValue}, DoubleValue={testStruct.DoubleValue}");
 
-        // 如果你想在结构体中使用字符串，可以使用以下方法将 fixed 数组转换回托管字符串
+        // 如果你想在结构体中使用字符串，可以像下面这样把固定数组转换回托管字符串
         unsafe
         {
             string? managedString = ToManagedString(testStruct.StringValue, 20);
             Console.WriteLine($"StringValue: {managedString}");
         }
+
+        consumer.Commit();
     }
 
     Console.WriteLine("Consumed 100 items.");
@@ -167,8 +167,7 @@ var consumeTask = Task.Run(() =>
 
 await Task.WhenAll(produceTask, consumeTask);
 
-
-// 如果你想在结构体中使用字符串，可以使用以下方法将其转换回托管字符串
+// 如果你想在结构体中使用字符串，可以像下面这样把固定数组转换回托管字符串
 unsafe string? ToManagedString(char* source, int maxLength)
 {
     if (source == null)

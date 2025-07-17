@@ -1,104 +1,72 @@
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using ConsoleApp;
 using MappedFileQueues;
 
-// Clean up the test directory
-var testDirectory = "test";
-if (Directory.Exists(testDirectory))
+var storePath = "test";
+
+// If you have run the test before, delete the previous data first
+if (Directory.Exists(storePath))
 {
-    Directory.Delete(testDirectory, true);
+    Directory.Delete(storePath, true);
 }
 
-var segmentSize = 512 * 1024 * 1024; // 512 MB
-
-var itemSize = Marshal.SizeOf<TestStruct>();
-var items = 20_000_000;
-
-using var mappedFileQueue = MappedFileQueue.Create<TestStruct>(new MappedFileQueueOptions
+var queue = MappedFileQueue.Create<TestStruct>(new MappedFileQueueOptions
 {
-    StorePath = testDirectory,
-    SegmentSize = segmentSize
+    StorePath = storePath,
+    SegmentSize = 512 * 1024 * 1024 // 512 MB
 });
 
-var producer = mappedFileQueue.Producer;
+var producer = queue.Producer;
 
-var consumer = mappedFileQueue.Consumer;
+var consumer = queue.Consumer;
 
-var sw = Stopwatch.StartNew();
-unsafe
+var produceTask = Task.Run(() =>
 {
-    for (var i = 1; i <= items; i++)
+    for (var i = 1; i <= 100; i++)
     {
-        var testStruct = new TestStruct
-        {
-            IntValue = i,
-            LongValue = i * 10,
-            DoubleValue = i / 2.0,
-        };
+        var testStruct = new TestStruct { IntValue = i, LongValue = i * 10, DoubleValue = i / 2.0 };
 
-        var testString = "TestString" + i;
-        fixed (char* fixedChar = testString)
+        // If you want to use strings in the struct, you can use the following method to copy to the fixed array
+        var testString = "TestString_" + i;
+        unsafe
         {
-            Unsafe.CopyBlock(testStruct.StringValue, fixedChar, sizeof(char) * (uint)testString.Length);
-        }
-
-        if (i == 1)
-        {
-            Console.WriteLine($"The first item: {nameof(testStruct.IntValue)} = {testStruct.IntValue}, " +
-                              $"{nameof(testStruct.LongValue)} = {testStruct.LongValue}, " +
-                              $"{nameof(testStruct.DoubleValue)} = {testStruct.DoubleValue}, " +
-                              $"{nameof(testStruct.StringValue)} = {testString}");
-        }
-
-        if (i == items)
-        {
-            Console.WriteLine($"The last item: {nameof(testStruct.IntValue)} = {testStruct.IntValue}, " +
-                              $"{nameof(testStruct.LongValue)} = {testStruct.LongValue}, " +
-                              $"{nameof(testStruct.DoubleValue)} = {testStruct.DoubleValue}, " +
-                              $"{nameof(testStruct.StringValue)} = {testString}");
+            fixed (char* fixedChar = testString)
+            {
+                Unsafe.CopyBlock(testStruct.StringValue, fixedChar, sizeof(char) * (uint)testString.Length);
+            }
         }
 
         producer.Produce(ref testStruct);
     }
-}
 
-Console.WriteLine($"Completed writing {segmentSize * 2 / itemSize} items in {sw.ElapsedMilliseconds} ms");
+    Console.WriteLine("Produced 100 items.");
+});
 
-sw.Restart();
-for (var i = 1; i <= items; i++)
+var consumeTask = Task.Run(() =>
 {
-    consumer.Consume(out TestStruct testStruct);
-    consumer.Commit();
-
-    if (i == 1)
+    for (var i = 1; i <= 100; i++)
     {
+        consumer.Consume(out var testStruct);
+        Console.WriteLine(
+            $"Consumed: IntValue={testStruct.IntValue}, LongValue={testStruct.LongValue}, DoubleValue={testStruct.DoubleValue}");
+
+        // If you want to use strings in the struct, you can convert the fixed array back to a managed string as follows
         unsafe
         {
-            Console.WriteLine($"The first item: {nameof(testStruct.IntValue)} = {testStruct.IntValue}, " +
-                              $"{nameof(testStruct.LongValue)} = {testStruct.LongValue}, " +
-                              $"{nameof(testStruct.DoubleValue)} = {testStruct.DoubleValue}, " +
-                              $"{nameof(testStruct.StringValue)} = {ToManagedString(testStruct.StringValue, 20)}");
+            string? managedString = ToManagedString(testStruct.StringValue, 20);
+            Console.WriteLine($"StringValue: {managedString}");
         }
+
+        consumer.Commit();
     }
 
-    if (i == items)
-    {
-        unsafe
-        {
-            Console.WriteLine($"The last item: {nameof(testStruct.IntValue)} = {testStruct.IntValue}, " +
-                              $"{nameof(testStruct.LongValue)} = {testStruct.LongValue}, " +
-                              $"{nameof(testStruct.DoubleValue)} = {testStruct.DoubleValue}, " +
-                              $"{nameof(testStruct.StringValue)} = {ToManagedString(testStruct.StringValue, 20)}");
-        }
-    }
-}
+    Console.WriteLine("Consumed 100 items.");
+});
 
-Console.WriteLine($"Completed reading {segmentSize * 2 / itemSize} items in {sw.ElapsedMilliseconds} ms");
+await Task.WhenAll(produceTask, consumeTask);
 
 
-// If you want to use the string in the struct, you can use the following method to convert it back to a managed string
+// If you want to use strings in the struct, you can convert the fixed array back to a managed string as follows
 unsafe string? ToManagedString(char* source, int maxLength)
 {
     if (source == null)

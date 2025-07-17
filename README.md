@@ -115,8 +115,7 @@ if (Directory.Exists(storePath))
 
 var queue = MappedFileQueue.Create<TestStruct>(new MappedFileQueueOptions
 {
-    StorePath = storePath,
-    SegmentSize = 512 * 1024 * 1024 // 512 MB
+    StorePath = storePath, SegmentSize = 512 * 1024 * 1024 // 512 MB
 });
 
 var producer = queue.Producer;
@@ -125,20 +124,18 @@ var consumer = queue.Consumer;
 
 var produceTask = Task.Run(() =>
 {
-    for (var i = 0; i < 100; i++)
+    for (var i = 1; i <= 100; i++)
     {
-        var testStruct = new TestStruct
-        {
-            IntValue = i,
-            LongValue = i * 10,
-            DoubleValue = i / 2.0,
-        };
+        var testStruct = new TestStruct { IntValue = i, LongValue = i * 10, DoubleValue = i / 2.0 };
 
         // If you want to use strings in the struct, you can use the following method to copy to the fixed array
-        var testString = "TestString" + i;
-        fixed (char* fixedChar = testString)
+        var testString = "TestString_" + i;
+        unsafe
         {
-            Unsafe.CopyBlock(testStruct.StringValue, fixedChar, sizeof(char) * (uint)testString.Length);
+            fixed (char* fixedChar = testString)
+            {
+                Unsafe.CopyBlock(testStruct.StringValue, fixedChar, sizeof(char) * (uint)testString.Length);
+            }
         }
 
         producer.Produce(ref testStruct);
@@ -149,10 +146,11 @@ var produceTask = Task.Run(() =>
 
 var consumeTask = Task.Run(() =>
 {
-    for (var i = 0; i < 100; i++)
+    for (var i = 1; i <= 100; i++)
     {
-        var testStruct = consumer.Consume<TestStruct>();
-        Console.WriteLine($"Consumed: IntValue={testStruct.IntValue}, LongValue={testStruct.LongValue}, DoubleValue={testStruct.DoubleValue}");
+        consumer.Consume(out var testStruct);
+        Console.WriteLine(
+            $"Consumed: IntValue={testStruct.IntValue}, LongValue={testStruct.LongValue}, DoubleValue={testStruct.DoubleValue}");
 
         // If you want to use strings in the struct, you can convert the fixed array back to a managed string as follows
         unsafe
@@ -160,6 +158,8 @@ var consumeTask = Task.Run(() =>
             string? managedString = ToManagedString(testStruct.StringValue, 20);
             Console.WriteLine($"StringValue: {managedString}");
         }
+
+        consumer.Commit();
     }
 
     Console.WriteLine("Consumed 100 items.");
