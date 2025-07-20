@@ -74,9 +74,6 @@ public interface IMappedFileProducer<T> where T : struct
     // 用于观察当前生产者的下一个可写入的偏移量
     public long Offset { get; }
 
-    // 调整当前生产者的偏移量
-    public void AdjustOffset(long offset);
-
     public void Produce(ref T message);
 }
 

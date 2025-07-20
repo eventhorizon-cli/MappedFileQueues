@@ -74,9 +74,6 @@ public interface IMappedFileProducer<T> where T : struct
     // Observes the next writable offset for the current producer
     public long Offset { get; }
 
-    // Adjusts the offset for the current producer
-    public void AdjustOffset(long offset);
-
     public void Produce(ref T item);
 }
 
