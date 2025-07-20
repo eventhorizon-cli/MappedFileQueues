@@ -38,6 +38,17 @@ internal class OffsetMappedFile : IDisposable
         _vierAccessor.Write(0, _offset);
     }
 
+    public void MoveTo(long offset)
+    {
+        if (offset < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(offset), "Offset must be greater than or equal to zero.");
+        }
+
+        _offset = offset;
+        _vierAccessor.Write(0, _offset);
+    }
+
     public void Dispose()
     {
         _fileStream.Dispose();

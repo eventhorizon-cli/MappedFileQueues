@@ -35,15 +35,15 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where
         _segmentDirectory = Path.Combine(options.StorePath, Constants.CommitLogDirectory);
     }
 
-    public long NextOffset => _offsetFile.Offset;
+    public long Offset => _offsetFile.Offset;
 
-    public void Produce(ref T item)
+    public void Produce(ref T message)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
         _segment ??= FindOrCreateSegmentByOffset();
 
-        _segment.Write(_offsetFile.Offset, ref item);
+        _segment.Write(_offsetFile.Offset, ref message);
 
         Commit();
     }

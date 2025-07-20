@@ -72,7 +72,10 @@ The producer and consumer interfaces in MappedFileQueues are as follows:
 public interface IMappedFileProducer<T> where T : struct
 {
     // Observes the next writable offset for the current producer
-    public long NextOffset { get; }
+    public long Offset { get; }
+
+    // Adjusts the offset for the current producer
+    public void AdjustOffset(long offset);
 
     public void Produce(ref T item);
 }
@@ -80,7 +83,10 @@ public interface IMappedFileProducer<T> where T : struct
 public interface IMappedFileConsumer<T> where T : struct
 {
     // Observes the next offset to consume for the current consumer
-    public long NextOffset { get; }
+    public long Offset { get; }
+
+    // Adjusts the offset for the current consumer
+    public void AdjustOffset(long offset);
 
     public T Consume();
 

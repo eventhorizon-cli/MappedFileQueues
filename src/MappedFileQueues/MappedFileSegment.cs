@@ -82,7 +82,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
     /// </summary>
     public long AllowedLastOffsetToWrite { get; }
 
-    public void Write(long offset, ref T value)
+    public void Write(long offset, ref T message)
     {
         if (offset > AllowedLastOffsetToWrite)
         {
@@ -98,11 +98,11 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
                 $"Offset {offset} must be greater than or equal to the start offset {StartOffset}.");
         }
 
-        _viewAccessor.Write(segmentRelativeOffset, ref value);
+        _viewAccessor.Write(segmentRelativeOffset, ref message);
         _viewAccessor.Write(segmentRelativeOffset + _payloadSize, Constants.EndMarker);
     }
 
-    public bool TryRead(long offset, out T value)
+    public bool TryRead(long offset, out T message)
     {
         if (offset > AllowedLastOffsetToWrite)
         {
@@ -122,11 +122,11 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
 
         if (endMarker != Constants.EndMarker)
         {
-            value = default;
+            message = default;
             return false;
         }
 
-        _viewAccessor.Read(segmentRelativeOffset, out value);
+        _viewAccessor.Read(segmentRelativeOffset, out message);
         return true;
     }
 

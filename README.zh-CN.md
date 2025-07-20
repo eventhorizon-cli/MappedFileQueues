@@ -72,17 +72,23 @@ MappedFileQueues 中的生产者和消费者接口如下所示：
 public interface IMappedFileProducer<T> where T : struct
 {
     // 用于观察当前生产者的下一个可写入的偏移量
-    public long NextOffset { get; }
+    public long Offset { get; }
 
-    public void Produce(ref T item);
+    // 调整当前生产者的偏移量
+    public void AdjustOffset(long offset);
+
+    public void Produce(ref T message);
 }
 
 public interface IMappedFileConsumer<T> where T : struct
 {
     // 用于观察当前消费者的下一个需要消费的偏移量
-    public long NextOffset { get; }
+    public long Offset { get; }
 
-    public T Consume();
+    // 调整当前消费者的偏移量
+    public void AdjustOffset(long offset);
+
+    public void Consume(out T message);
 
     public void Commit();
 }

@@ -36,9 +36,27 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
         _segmentDirectory = Path.Combine(options.StorePath, Constants.CommitLogDirectory);
     }
 
-    public long NextOffset => _offsetFile.Offset;
+    public long Offset => _offsetFile.Offset;
 
-    public void Consume(out T item)
+    public void AdjustOffset(long offset)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        if (offset < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(offset), "Offset must be greater than or equal to zero.");
+        }
+
+        if (_segment != null)
+        {
+            throw new InvalidOperationException(
+                "Cannot adjust offset while there is an active segment. Please adjust the offset before consuming any messages.");
+        }
+
+        _offsetFile.MoveTo(offset);
+    }
+
+    public void Consume(out T message)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
@@ -56,9 +74,9 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
         var spinWait = new SpinWait();
         var startTicks = DateTime.UtcNow.Ticks;
 
-        while (!_segment.TryRead(_offsetFile.Offset, out item))
+        while (!_segment.TryRead(_offsetFile.Offset, out message))
         {
-            // Spin wait until the item is available or timeout
+            // Spin wait until the message is available or timeout
             if ((DateTime.UtcNow.Ticks - startTicks) / TimeSpan.TicksPerMillisecond > spinWaitDurationMs)
             {
                 // Sleep for a short interval before retrying if spin wait times out
