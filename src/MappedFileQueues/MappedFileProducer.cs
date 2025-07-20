@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace MappedFileQueues;
 
@@ -30,7 +30,7 @@ internal class MappedFileProducer<T> : IMappedFileProducer<T>, IDisposable where
         var offsetPath = Path.Combine(offsetDir, Constants.ProducerOffsetFile);
         _offsetFile = new OffsetMappedFile(offsetPath);
 
-        _payloadSize = Marshal.SizeOf<T>();
+        _payloadSize = Unsafe.SizeOf<T>();
 
         _segmentDirectory = Path.Combine(options.StorePath, Constants.CommitLogDirectory);
     }

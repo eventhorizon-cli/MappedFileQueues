@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace MappedFileQueues;
 
@@ -31,7 +31,7 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
         var offsetPath = Path.Combine(offsetDir, Constants.ConsumerOffsetFile);
         _offsetFile = new OffsetMappedFile(offsetPath);
 
-        _payloadSize = Marshal.SizeOf<T>();
+        _payloadSize = Unsafe.SizeOf<T>();
 
         _segmentDirectory = Path.Combine(options.StorePath, Constants.CommitLogDirectory);
     }

@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO.MemoryMappedFiles;
-using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace MappedFileQueues;
 
@@ -30,7 +30,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
 
         StartOffset = fileStartOffset;
 
-        _payloadSize = Marshal.SizeOf<T>();
+        _payloadSize = Unsafe.SizeOf<T>();
         var messageSize = _payloadSize + Constants.EndMarkerSize;
 
         AllowedItemCount = fileSize / messageSize;
@@ -201,7 +201,7 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
 
     private static long GetFileStartOffset(long fileSize, long offset)
     {
-        var payloadSize = Marshal.SizeOf<T>();
+        var payloadSize = Unsafe.SizeOf<T>();
         var maxItems = fileSize / (payloadSize + 1);
         var adjustedFileSize = maxItems * (payloadSize + 1);
         var fileStartOffset = offset / adjustedFileSize * adjustedFileSize;
