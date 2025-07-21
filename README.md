@@ -68,6 +68,8 @@ Details:
 
 The producer and consumer interfaces in MappedFileQueues are as follows:
 
+**Note: In actual usage, use a separate thread for LongRunning to consume data in order to avoid occupying thread pool threads.**
+
 ```csharp
 public interface IMappedFileProducer<T> where T : struct
 {
