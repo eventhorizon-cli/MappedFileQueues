@@ -21,4 +21,9 @@ public class MappedFileQueueOptions
     /// The maximum duration a consumer will spin-wait each time for an item to become available.
     /// </summary>
     public TimeSpan ConsumerSpinWaitDuration { get; set; } = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>
+    /// Number of produced items after which the producer will perform a forced flush.
+    /// </summary>
+    public long ProducerForceFlushIntervalCount { get; set; } = 1000;
 }

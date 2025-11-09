@@ -130,8 +130,21 @@ internal sealed class MappedFileSegment<T> : IDisposable where T : struct
         return true;
     }
 
+
+    /// <summary>
+    /// Forces any changes made to the memory-mapped view to be written to the underlying file.
+    /// It is not usually necessary to call this method, as the system will flush changes automatically,
+    /// but it can be useful in scenarios where data integrity is critical.
+    /// </summary>
+    public void Flush()
+    {
+        _viewAccessor.Flush();
+        _fileStream.Flush(true);
+    }
+
     public void Dispose()
     {
+        Flush();
         _viewAccessor.Dispose();
         _mmf.Dispose();
         _fileStream.Dispose();

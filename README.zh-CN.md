@@ -43,6 +43,7 @@ offset 使用 long 类型存储，支持的最大值为 2^63-1。
 │   └── ...
 ├── offset
 │   ├── producer.offset
+│   ├── producer.confirmed.offset
 │   └── consumer.offset
 ```
 
@@ -51,7 +52,9 @@ offset 使用 long 类型存储，支持的最大值为 2^63-1。
 - `commitlog` 目录存储实际的 Segment 文件。
 
 - `offset` 目录存储生产者和消费者的偏移量文件。
-
+  - `producer.offset` 文件用于记录生产者的写入偏移量。
+  - `producer.confirmed.offset` 文件用于记录生产者已确认写入磁盘的偏移量，用于在系统异常重启后，生产者可以从该偏移量继续写入数据，避免消费者陷入等待已丢失数据的情况。
+  - `consumer.offset` 文件用于记录消费者的消费偏移量。
 ### 使用示例
 
 #### 配置选项（MappedFileQueueOptions）
@@ -64,6 +67,8 @@ offset 使用 long 类型存储，支持的最大值为 2^63-1。
 
 - **ConsumerSpinWaitDuration**：消费者单次自旋等待数据时的最大等待时间，默认为 100 毫秒。
 
+- **ProducerForceFlushIntervalCount**：生产者在写入数据后，强制将数据刷新到磁盘的间隔消息数量，默认为 1000 条消息。在未达到该数量时，数据可能会暂存在内存中，存在丢失的风险，需等待系统自动刷新到磁盘。将此值设置为 1 可最大程度地保证数据安全，但会影响性能。在突然断电等异常情况下，未及时落盘的数据可能会丢失，恢复时将对生产者的 offset 进行回退，以确保消费者不会等待已丢失的数据。
+
 #### 生产和消费数据
 
 MappedFileQueues 中的生产者和消费者接口如下所示：
@@ -73,6 +78,12 @@ public interface IMappedFileProducer<T> where T : struct
 {
     // 用于观察当前生产者的下一个可写入的偏移量
     public long Offset { get; }
+
+    // 用于观察当前生产者已确认写入磁盘的偏移量
+    public long ConfirmedOffset { get; }
+
+    // 调整当前生产者的偏移量
+    public void AdjustOffset(long offset);
 
     public void Produce(ref T message);
 }

@@ -53,7 +53,7 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
                 "Cannot adjust offset while there is an active segment. Please adjust the offset before consuming any messages.");
         }
 
-        _offsetFile.MoveTo(offset);
+        _offsetFile.MoveTo(offset, true);
     }
 
     public void Consume(out T message)
@@ -119,6 +119,13 @@ internal class MappedFileConsumer<T> : IMappedFileConsumer<T>, IDisposable where
         _offsetFile.Dispose();
         _segment?.Dispose();
     }
+
+    public bool NextMessageAvailable() =>
+        _segment switch
+        {
+            null when !TryFindSegmentByOffset(out _segment) => false,
+            _ => _segment.TryRead(_offsetFile.Offset, out _)
+        };
 
     private bool TryFindSegmentByOffset([MaybeNullWhen(false)] out MappedFileSegment<T> segment) =>
         MappedFileSegment<T>.TryFind(
