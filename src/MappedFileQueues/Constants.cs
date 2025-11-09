@@ -8,6 +8,8 @@ internal class Constants
 
     public const string ProducerOffsetFile = "producer.offset";
 
+    public const string ProducerConfirmedOffsetFile = "producer.confirmed.offset";
+
     public const string ConsumerOffsetFile = "consumer.offset";
 
     public const byte EndMarker = 0xFF;

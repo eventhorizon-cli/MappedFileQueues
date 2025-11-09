@@ -9,18 +9,9 @@ public sealed class MappedFileQueue<T> : IDisposable where T : struct
 
     public MappedFileQueue(MappedFileQueueOptions options)
     {
+        _options = options;
+
         ArgumentException.ThrowIfNullOrWhiteSpace(options.StorePath, nameof(options.StorePath));
-
-        if (File.Exists(options.StorePath))
-        {
-            throw new ArgumentException($"The path '{options.StorePath}' is a file, not a directory.",
-                nameof(options.StorePath));
-        }
-
-        if (!Directory.Exists(options.StorePath))
-        {
-            Directory.CreateDirectory(options.StorePath);
-        }
 
         if (options.SegmentSize <= 0)
         {
@@ -28,7 +19,20 @@ public sealed class MappedFileQueue<T> : IDisposable where T : struct
                 "SegmentSize must be greater than zero.");
         }
 
-        _options = options;
+        if (File.Exists(options.StorePath))
+        {
+            throw new ArgumentException($"The path '{options.StorePath}' is a file, not a directory.",
+                nameof(options.StorePath));
+        }
+
+        if (Directory.Exists(options.StorePath))
+        {
+            RecoverProducerOffsetIfNeeded();
+        }
+        else
+        {
+            Directory.CreateDirectory(options.StorePath);
+        }
     }
 
     public IMappedFileProducer<T> Producer => _producer ??= new MappedFileProducer<T>(_options);
@@ -38,5 +42,73 @@ public sealed class MappedFileQueue<T> : IDisposable where T : struct
     {
         _producer?.Dispose();
         _consumer?.Dispose();
+    }
+
+    // Check the last data. If the producer's offset is greater than the consumer's offset,
+    // and the consumer cannot consume the next piece of data, it means that there is data
+    // in the queue that was not persisted before the crash. We need to roll back the
+    // producer's offset to the position of the data that has been confirmed to be persisted.
+    private void RecoverProducerOffsetIfNeeded()
+    {
+        // On Windows, use "Global\" prefix to make the named semaphore visible across all user sessions (system-wide on this machine).
+        var semName = $"Global\\MappedFileQueueSem_{_options.StorePath.GetHashCode()}";
+        Semaphore? semaphore = null;
+        try
+        {
+            semaphore = new Semaphore(1, 1, semName);
+        }
+        catch (NotSupportedException)
+        {
+            // Named semaphores are not supported on this platform, use unnamed semaphore instead.
+            semaphore = new Semaphore(1, 1);
+        }
+
+        using var sem = semaphore;
+
+        semaphore.WaitOne();
+
+        try
+        {
+            var consumer = Consumer;
+
+            if (consumer.NextMessageAvailable())
+            {
+                return;
+            }
+
+            var producer = Producer;
+
+            if (producer.Offset <= consumer.Offset)
+            {
+                // the consumer can continue to consume when
+                // the producer produces a new message
+                return;
+            }
+
+            var rollbackOffset = Math.Max(consumer.Offset, producer.ConfirmedOffset);
+
+            if (producer.Offset > rollbackOffset)
+            {
+                producer.AdjustOffset(rollbackOffset);
+            }
+
+            if (producer.Offset > consumer.Offset
+                && !consumer.NextMessageAvailable())
+            {
+                throw new InvalidOperationException(
+                    "After recovering the producer's offset, the consumer still cannot consume the next message, the data may be corrupted.");
+            }
+        }
+        finally
+        {
+            // The producer and consumer may not be used after this recovery process,
+            // so we dispose them here.
+            _producer?.Dispose();
+            _consumer?.Dispose();
+            _producer = null;
+            _consumer = null;
+
+            semaphore.Release();
+        }
     }
 }

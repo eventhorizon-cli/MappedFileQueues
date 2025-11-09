@@ -43,6 +43,7 @@ Under the storage path specified by the `StorePath` configuration option, Mapped
 │   └── ...
 ├── offset
 │   ├── producer.offset
+│   ├── producer.confirmed.offset
 │   └── consumer.offset
 ```
 
@@ -51,6 +52,9 @@ Details:
 - The `commitlog` directory stores the actual Segment files.
 
 - The `offset` directory stores the offset files for both the producer and the consumer.
+  - The `producer.offset` file is used to record the write offset of the producer.
+  - The `producer.confirmed.offset` file is used to record the offset that the producer has confirmed to be written to disk. This is used so that after a system abnormal restart, the producer can continue writing data from this offset, avoiding the situation where the consumer waits for lost data.
+  - The `consumer.offset` file is used to record the consumption offset of the consumer.
 
 ### Usage Example
 
@@ -64,6 +68,8 @@ Details:
 
 - **ConsumerSpinWaitDuration**: The maximum duration for a single spin-wait for data by the consumer, default is 100 milliseconds.
 
+- **ProducerForceFlushIntervalCount**: The number of messages after which the producer will forcibly flush data to disk after writing. The default is 1000 messages. If this number is not reached, data may be temporarily stored in memory, posing a risk of data loss until the system automatically flushes it to disk. Setting this value to 1 maximizes data safety but may impact performance. In cases of sudden power loss or other exceptions, data that has not been promptly written to disk may be lost. During recovery, the producer's offset will be rolled back to ensure that the consumer does not wait for lost data.
+
 #### Producing and Consuming Data
 
 The producer and consumer interfaces in MappedFileQueues are as follows:
@@ -75,6 +81,12 @@ public interface IMappedFileProducer<T> where T : struct
 {
     // Observes the next writable offset for the current producer
     public long Offset { get; }
+
+    // Observes the offset that the current producer has confirmed to be written to disk
+    public long ConfirmedOffset { get; }
+
+    // Adjusts the offset for the current producer
+    public void AdjustOffset(long offset);
 
     public void Produce(ref T item);
 }

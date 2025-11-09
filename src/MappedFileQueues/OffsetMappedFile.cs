@@ -38,7 +38,7 @@ internal class OffsetMappedFile : IDisposable
         _vierAccessor.Write(0, _offset);
     }
 
-    public void MoveTo(long offset)
+    public void MoveTo(long offset, bool flushToDisk = false)
     {
         if (offset < 0)
         {
@@ -47,6 +47,10 @@ internal class OffsetMappedFile : IDisposable
 
         _offset = offset;
         _vierAccessor.Write(0, _offset);
+        if (flushToDisk)
+        {
+            Flush();
+        }
     }
 
     public void Dispose()
@@ -54,5 +58,11 @@ internal class OffsetMappedFile : IDisposable
         _fileStream.Dispose();
         _mmf.Dispose();
         _vierAccessor.Dispose();
+    }
+
+    public void Flush()
+    {
+        _vierAccessor.Flush();
+        _fileStream.Flush(true);
     }
 }
