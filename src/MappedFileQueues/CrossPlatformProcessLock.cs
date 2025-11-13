@@ -56,6 +56,7 @@ internal sealed class CrossPlatformProcessLock : IDisposable
     private class MutexProcessLock(string name) : IProcessLock
     {
         private Mutex? _mutex;
+
         // Global\ Make the mutex available across sessions
         private readonly string _name = $@"Global\{name}";
 
