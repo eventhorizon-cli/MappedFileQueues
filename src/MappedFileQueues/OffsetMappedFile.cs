@@ -55,6 +55,7 @@ internal class OffsetMappedFile : IDisposable
 
     public void Dispose()
     {
+        Flush();
         _fileStream.Dispose();
         _mmf.Dispose();
         _vierAccessor.Dispose();

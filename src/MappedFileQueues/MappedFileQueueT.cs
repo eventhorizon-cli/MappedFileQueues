@@ -50,22 +50,10 @@ public sealed class MappedFileQueue<T> : IDisposable where T : struct
     // producer's offset to the position of the data that has been confirmed to be persisted.
     private void RecoverProducerOffsetIfNeeded()
     {
-        // On Windows, use "Global\" prefix to make the named semaphore visible across all user sessions (system-wide on this machine).
-        var semName = $"Global\\MappedFileQueueSem_{_options.StorePath.GetHashCode()}";
-        Semaphore? semaphore = null;
-        try
-        {
-            semaphore = new Semaphore(1, 1, semName);
-        }
-        catch (NotSupportedException)
-        {
-            // Named semaphores are not supported on this platform, use unnamed semaphore instead.
-            semaphore = new Semaphore(1, 1);
-        }
+        var lockName = "recovery_lock";
+        using var processLock = new CrossPlatformProcessLock(lockName, _options.StorePath);
 
-        using var sem = semaphore;
-
-        semaphore.WaitOne();
+        processLock.Acquire();
 
         try
         {
@@ -108,7 +96,7 @@ public sealed class MappedFileQueue<T> : IDisposable where T : struct
             _producer = null;
             _consumer = null;
 
-            semaphore.Release();
+            processLock.Release();
         }
     }
 }
