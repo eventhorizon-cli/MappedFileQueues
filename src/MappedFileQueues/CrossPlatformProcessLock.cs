@@ -7,7 +7,7 @@ namespace MappedFileQueues;
 /// A cross-platform process lock implementation. Only Windows and Linux are supported.
 /// On Windows, a named mutex is used. On Linux, a file lock is used. On other platforms, a no-op lock is used.
 /// </summary>
-internal sealed class CrossPlatformProcessLock : IDisposable
+internal sealed class CrossPlatformProcessLock
 {
     private readonly IProcessLock _lock;
 
@@ -39,11 +39,9 @@ internal sealed class CrossPlatformProcessLock : IDisposable
     public void Acquire() => _lock.Acquire();
     public void Release() => _lock.Release();
 
-    public void Dispose() => _lock.Dispose();
-
     #region Process Lock Interface
 
-    private interface IProcessLock : IDisposable
+    private interface IProcessLock
     {
         void Acquire();
         void Release();
@@ -71,8 +69,6 @@ internal sealed class CrossPlatformProcessLock : IDisposable
             _mutex?.ReleaseMutex();
             _mutex?.Dispose();
         }
-
-        public void Dispose() => Release();
     }
 
     #endregion
@@ -107,8 +103,6 @@ internal sealed class CrossPlatformProcessLock : IDisposable
             _lockFileStream?.Unlock(0, 0);
             _lockFileStream?.Dispose();
         }
-
-        public void Dispose() => Release();
     }
 
     #endregion
@@ -122,10 +116,6 @@ internal sealed class CrossPlatformProcessLock : IDisposable
         }
 
         public void Release()
-        {
-        }
-
-        public void Dispose()
         {
         }
     }
