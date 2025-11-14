@@ -51,12 +51,12 @@ public sealed class MappedFileQueue<T> : IDisposable where T : struct
     private void RecoverProducerOffsetIfNeeded()
     {
         var lockName = "recovery_lock";
-        using var processLock = new CrossPlatformProcessLock(lockName, _options.StorePath);
-
-        processLock.Acquire();
+        var processLock = new CrossPlatformProcessLock(lockName, _options.StorePath);
 
         try
         {
+            processLock.Acquire();
+
             var consumer = Consumer;
 
             if (consumer.NextMessageAvailable())
