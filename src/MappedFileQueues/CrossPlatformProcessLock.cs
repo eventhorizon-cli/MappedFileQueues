@@ -1,3 +1,5 @@
+#pragma warning disable CA1416 // Ignore: Validate platform compatibility
+
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
